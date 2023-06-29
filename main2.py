@@ -8,10 +8,11 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 import io
 from reportlab.pdfgen import canvas
-from PyPDF2 import PdfFileWriter, PdfFileReader
+from PyPDF2 import PdfFileWriter, PdfFileReader, PageObject
 
 song_directory = "songs"
 output_filename = "song_book.pdf"
+
 
 # don't use this function now
 def create_toc(song_data):
@@ -92,7 +93,7 @@ def get_song_data():
             # Filenames are formatted as "Artist - Song Title.pdf"
             # Split the filename into artist and title
             artist, title = filename[:-4].split("-")
-            song_data.append((artist, title))
+            song_data.append({"artist" : artist, "title" : title, "page_length" : None, "page_start" : None})
 
     return song_data
 
@@ -151,13 +152,45 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, text):
         output.write(outputStream)
 
 
-if __name__ == "__main__":
-    
-    songs_data = get_song_data()
-    #print(songs_data)
+def merge_songs(song_data):
+    """
+    Merge all PDFs in the song_directory and create a combined PDF.
+    song_data: list of tuples containing artist and song title
+    """
+    # Initialize the output PDF merger
+    output_pdf = PyPDF2.PdfFileMerger()
 
     # Process and append each song PDF
-    for artist, title in songs_data:
+    for song in song_data:
+        
+        artist = song["artist"]
+        title = song["title"]
+
+        # open pdf that is in the songs folder
+        filename = os.path.join(song_directory, f"{artist}-{title}.pdf")
+
+        with open(filename, "rb") as song_file:
+            song_pdf = PyPDF2.PdfFileReader(song_file)
+
+            # Append the processed song PDF to the output PDF
+            output_pdf.append(song_pdf)
+
+    # Save the combined PDF
+    with open(output_filename, "wb") as output_file:
+        output_pdf.write(output_file)
+
+if __name__ == "__main__":
+    
+    song_data = get_song_data()
+    #print(songs_data)
+
+    merge_songs(song_data)
+
+    # Process and append each song PDF
+    for song in song_data:
+        artist = song["artist"]
+        title = song["title"]
+        
         # get filename of pdf that is in the songs folder
         filename_read = os.path.join(song_directory, f"{artist}-{title}.pdf")
         filename_write = os.path.join("songs_modified", f"{artist}-{title}_modified.pdf")
