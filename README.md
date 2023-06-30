@@ -17,3 +17,8 @@ limitations under the License.
 # Liederbuch by Julius Bergmann
 
 Es soll ein Liederbuch so einfach wie nur möglich selbst erstellt werden können.
+
+1) Nimm einfach alle Lieder die du hast als PDF und speicher sie in dem Ordner input/songs unter dem Muster "Künstler:in-Titel.pdf".
+2) Hinterlege ein Cover im Ordner input.
+3) Lass das Programm laufen.
+4) Habe Spaß mit deinem neuen Liederbuch!
