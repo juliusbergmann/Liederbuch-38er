@@ -12,71 +12,8 @@ from PyPDF2 import PdfFileWriter, PdfFileReader, PageObject
 from reportlab.lib.colors import white, black, red, blue, green, yellow, brown, pink, purple, orange
 
 song_directory = "songs"
-output_filename = "song_book.pdf"
-
-
-# don't use this function now
-def create_toc(song_data):
-    """
-    Create a table of contents PDF with song_data.
-    
-    Args:
-        song_data (list): A list of tuples containing artist and song title.
-    """
-    # create a table of content and give back a pdf that can be merged
-
-def merge_pdfs_with_toc():
-    """
-    Merge all PDFs in the song_directory and create a combined PDF with a table of contents.
-    """
-    song_data = []
-
-    # Collect song data from PDF filenames
-    for filename in os.listdir(song_directory):
-        if filename.endswith(".pdf"):
-            # Filenames are formatted as "Artist - Song Title.pdf"
-            # Split the filename into artist and title
-            artist, title = filename[:-4].split("-")
-            song_data.append((artist, title))
-
-    # Create a table of contents PDF
-    #create_toc(song_data)
-
-    # Initialize the output PDF merger
-    output_pdf = PyPDF2.PdfFileMerger()
-
-    # Append the table of contents to the output PDF
-    #with open("temp_toc.pdf", "rb") as toc_file:
-    #    output_pdf.append(PyPDF2.PdfFileReader(toc_file))
-
-    # Process and append each song PDF
-    for artist, title in song_data:
-        # open pdf that is in the songs folder
-        filename = os.path.join(song_directory, f"{artist}-{title}.pdf")
-
-        with open(filename, "rb") as song_file:
-            song_pdf = PyPDF2.PdfFileReader(song_file)
-
-            # Add song title and artist name to the first page
-            first_page = song_pdf.getPage(0)
-            first_page.compressContentStreams()
-            content = f"q /Helvetica 14 Tf 10 750 Td ({artist} - {title}) Tj Q"
-            first_page._content = content.encode() + first_page["/Contents"]._data
-
-            # Add page numbers
-            for i in range(song_pdf.getNumPages()):
-                page = song_pdf.getPage(i)
-                page.compressContentStreams()
-                content = f"q /Helvetica 14 Tf 10 10 Td ({i + 1}) Tj Q"
-                page._content = page["/Contents"]._data + content.encode()
-
-            # Append the processed song PDF to the output PDF
-            output_pdf.append(song_pdf)
-
-    # Save the combined PDF and remove the temporary table of contents PDF
-    with open(output_filename, "wb") as output_file:
-        output_pdf.write(output_file)
-    #os.remove("temp_toc.pdf")
+output_filename = "songbook.pdf"
+building_directory = "build"
 
 
 def get_song_data():
@@ -123,7 +60,6 @@ def get_song_with_pagenum(song_data, pagenum):
     for song in song_data:
         if song["page_start"] <= pagenum and pagenum < song["page_start"] + song["page_length"]:
             return song
-
 
 def add_text_to_pdf(input_pdf_path, output_pdf_path, song_data):
     """
@@ -189,7 +125,6 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, song_data):
     with open(output_pdf_path, "wb") as outputStream:
         output.write(outputStream)
 
-
 def merge_songs(song_data):
     """
     Merge all PDFs in the song_directory and create a combined PDF.
@@ -214,8 +149,10 @@ def merge_songs(song_data):
             # Append the processed song PDF to the output PDF
             output_pdf.append(song_pdf)
 
+            # open pdf that is in the songs folder
+    filename = os.path.join(building_directory, f"combined_songs.pdf")
     # Save the combined PDF
-    with open(output_filename, "wb") as output_file:
+    with open(filename, "wb") as output_file:
         output_pdf.write(output_file)
 
 def sort_songs(song_data):
@@ -235,15 +172,15 @@ def set_pages(song_data):
         song["page_start"] = page_start
         page_start += song["page_length"]
 
-def create_toc(song_data, output_filename):
+def create_toc(song_data, toc_filename = "toc.pdf"):
     """
     Create a Table of Contents from song data.
 
     Args:
         song_data (list of dicts): The song data.
-        output_filename (str): Path to the output PDF.
+        toc_filename (str): Path to the output PDF.
     """
-    doc = SimpleDocTemplate(output_filename, pagesize=letter)
+    doc = SimpleDocTemplate(toc_filename, pagesize=letter)
 
     # Prepare the data for the Table
     data = [['Titel', 'Künstler:in', '', 'Seite']]  # Column labels
@@ -275,7 +212,7 @@ def create_toc(song_data, output_filename):
     # Create the PDF
     doc.build(elements)
 
-def build_songbook(cover_filename, songs_filename, output_filename, toc_filename="toc.pdf"):
+def build_songbook(cover_filename, songs_filename, songbook_filename, toc_filename="toc.pdf"):
     """
     Merge all PDFs in the song_directory and create a combined PDF.
     song_data: list of tuples containing artist and song title
@@ -306,7 +243,7 @@ def build_songbook(cover_filename, songs_filename, output_filename, toc_filename
         output_pdf.append(songs_pdf)
 
     # Save the combined PDF
-    with open(output_filename, "wb") as output_file:
+    with open(songbook_filename, "wb") as output_file:
         output_pdf.write(output_file)
 
 if __name__ == "__main__":
@@ -322,13 +259,17 @@ if __name__ == "__main__":
 
     merge_songs(song_data)
 
+    toc_filename = os.path.join(building_directory, f"toc.pdf")
     # create table of contents
-    create_toc(song_data, "toc.pdf")
+    create_toc(song_data, toc_filename)
 
+    cs_filename = os.path.join(building_directory, f"combined_songs.pdf")
+    cswt_filename = os.path.join(building_directory, f"combined_songs_with_text.pdf")
+     
     # write song data and pagenum on each page
-    add_text_to_pdf(output_filename, "real_output.pdf", song_data)
+    add_text_to_pdf(cs_filename, cswt_filename, song_data)
 
-    build_songbook("cover.pdf", "real_output.pdf", "songbook.pdf")
+    build_songbook("cover.pdf", cswt_filename, output_filename)
     print("Done!")
 
 
