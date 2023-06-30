@@ -5,7 +5,7 @@ import os
 import PyPDF2
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, PageBreak, Spacer
 import io
 from reportlab.pdfgen import canvas
 from PyPDF2 import PdfFileWriter, PdfFileReader, PageObject
@@ -233,6 +233,80 @@ def set_pages(song_data):
         song["page_start"] = page_start
         page_start += song["page_length"]
 
+def create_toc(song_data, output_filename):
+    """
+    Create a Table of Contents from song data.
+
+    Args:
+        song_data (list of dicts): The song data.
+        output_filename (str): Path to the output PDF.
+    """
+    doc = SimpleDocTemplate(output_filename, pagesize=letter)
+
+    # Prepare the data for the Table
+    data = [['Titel', 'Künstler:in', '', 'Seite']]  # Column labels
+    for song in song_data:
+        row = [song['title'], song['artist'], '', song['page_start']]
+        data.append(row)
+
+    # Create the Table
+    table = Table(data, colWidths=[doc.width/2.5, doc.width/2.5, doc.width/5, doc.width/10])
+
+    # Add a TableStyle
+    style = TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 12),
+        ('GRID', (0,0), (-1,-1), 0, colors.transparent),  # Make the grid transparent
+        ('LINEABOVE', (0,1), (-1,1), 1, colors.black)
+    ])
+    table.setStyle(style)
+
+    # Add the Table to the elements to be added to the PDF
+    elements = []
+    elements.append(PageBreak()) # Add a page break before the Table, so it starts on a new page
+    elements.append(table)
+    elements.append(Spacer(1, 12))
+    elements.append(PageBreak()) # Add a page break after the Table
+
+    # Create the PDF
+    doc.build(elements)
+
+def build_songbook(cover_filename, songs_filename, output_filename, toc_filename="toc.pdf"):
+    """
+    Merge all PDFs in the song_directory and create a combined PDF.
+    song_data: list of tuples containing artist and song title
+    """
+    # Initialize the output PDF merger
+    output_pdf = PyPDF2.PdfFileMerger()
+
+
+    with open(cover_filename, "rb") as file:
+        # read pdf
+        cover_pdf = PyPDF2.PdfFileReader(file)
+        #TODO: scale to A4
+        # Scale the cover to letter size
+        #cover_pdf.getPage(0).scaleTo(612, 792)
+        # Append the processed song PDF to the output PDF
+        output_pdf.append(cover_pdf)
+
+    with open(toc_filename, "rb") as file:
+        # read pdf
+        toc_pdf = PyPDF2.PdfFileReader(file)
+        # Append the processed song PDF to the output PDF
+        output_pdf.append(toc_pdf)
+
+    with open(songs_filename, "rb") as file:
+        # read pdf
+        songs_pdf = PyPDF2.PdfFileReader(file)
+        # Append the processed song PDF to the output PDF
+        output_pdf.append(songs_pdf)
+
+    # Save the combined PDF
+    with open(output_filename, "wb") as output_file:
+        output_pdf.write(output_file)
+
 if __name__ == "__main__":
     
     song_data = get_song_data()
@@ -247,10 +321,13 @@ if __name__ == "__main__":
     merge_songs(song_data)
 
     # create table of contents
+    create_toc(song_data, "toc.pdf")
 
     # write song data and pagenum on each page
-    add_text_to_pdf(output_filename, "real_output.pdf", song_data)    
+    add_text_to_pdf(output_filename, "real_output.pdf", song_data)
 
+    build_songbook("cover.pdf", "real_output.pdf", "songbook.pdf")
+    print("Done!")
 
 
 
