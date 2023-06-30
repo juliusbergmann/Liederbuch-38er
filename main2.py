@@ -222,7 +222,9 @@ def sort_songs(song_data):
     """
     Sort the songs by title.
     """
-    song_data.sort(key=lambda song: song["title"])
+    #song_data.sort(key=lambda song: song["title"])
+    # Sort song data by title and not case sensitive
+    song_data.sort(key=lambda song: song["title"].lower())
 
 def set_pages(song_data):
     """
