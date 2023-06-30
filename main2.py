@@ -9,6 +9,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 import io
 from reportlab.pdfgen import canvas
 from PyPDF2 import PdfFileWriter, PdfFileReader, PageObject
+from reportlab.lib.colors import white, black, red, blue, green, yellow, brown, pink, purple, orange
 
 song_directory = "songs"
 output_filename = "song_book.pdf"
@@ -93,19 +94,44 @@ def get_song_data():
             # Filenames are formatted as "Artist - Song Title.pdf"
             # Split the filename into artist and title
             artist, title = filename[:-4].split("-")
-            song_data.append({"artist" : artist, "title" : title, "page_length" : None, "page_start" : None})
+
+            # open pdf that is in the songs folder to get the number of pages
+            # open pdf that is in the songs folder
+            filename = os.path.join(song_directory, f"{artist}-{title}.pdf")
+            with open(filename, "rb") as song_file:
+                # read pdf
+                song_pdf = PyPDF2.PdfFileReader(song_file)
+
+                # add page num of song to song_data
+                song_num_pages = song_pdf.getNumPages()
+
+            song_data.append({"artist" : artist, "title" : title, "page_length" : song_num_pages, "page_start" : None})
 
     return song_data
 
+def get_song_with_pagenum(song_data, pagenum):
+    """
+    Get the song with the given pagenum.
 
-def add_text_to_pdf(input_pdf_path, output_pdf_path, text):
+    Args:
+        song_data (list): A list of tuples containing artist and song title.
+        pagenum (int): The pagenum of the song.
+
+    Returns:
+        dict: A dict containing artist, title, page_length, page_start.
+    """
+    for song in song_data:
+        if song["page_start"] <= pagenum and pagenum < song["page_start"] + song["page_length"]:
+            return song
+
+
+def add_text_to_pdf(input_pdf_path, output_pdf_path, song_data):
     """
     Add text to every page of a PDF and add page numbers to all pages.
 
     Args:
         input_pdf_path (str): Path to the input PDF.
         output_pdf_path (str): Path to the output PDF.
-        text (str): Text to add.
     """
     # Read the existing PDF
     existing_pdf = PdfFileReader(open(input_pdf_path, "rb"))
@@ -115,10 +141,22 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, text):
     # iterate over all pages
     for page_number in range(existing_pdf.getNumPages()):
 
+        # get the song with pagenum
+        current_song = get_song_with_pagenum(song_data, page_number+1)
+
+        # make string for writing
+        title = current_song["title"]
+        artist = current_song["artist"]
+        text = f"{title} - {artist}"
+
         # Create a new PDF with Reportlab
         packet = io.BytesIO()
         can = canvas.Canvas(packet)
 
+        can.setFillColor(white)
+        can.rect(50,780,420,45, fill=1, stroke=0)
+        
+        can.setFillColor(black)
         # Add the text to the PDF
         can.setFontSize(25)
         can.drawString(50, 790, text)
@@ -170,6 +208,7 @@ def merge_songs(song_data):
         filename = os.path.join(song_directory, f"{artist}-{title}.pdf")
 
         with open(filename, "rb") as song_file:
+            # read pdf
             song_pdf = PyPDF2.PdfFileReader(song_file)
 
             # Append the processed song PDF to the output PDF
@@ -179,22 +218,39 @@ def merge_songs(song_data):
     with open(output_filename, "wb") as output_file:
         output_pdf.write(output_file)
 
+def sort_songs(song_data):
+    """
+    Sort the songs by title.
+    """
+    song_data.sort(key=lambda song: song["title"])
+
+def set_pages(song_data):
+    """
+    Set the page start for each song.
+    """
+    page_start = 1
+    for song in song_data:
+        song["page_start"] = page_start
+        page_start += song["page_length"]
+
 if __name__ == "__main__":
     
     song_data = get_song_data()
     #print(songs_data)
 
+    # sort songs by title
+    sort_songs(song_data)
+
+    # set page start for each song
+    set_pages(song_data)
+
     merge_songs(song_data)
 
-    # Process and append each song PDF
-    for song in song_data:
-        artist = song["artist"]
-        title = song["title"]
-        
-        # get filename of pdf that is in the songs folder
-        filename_read = os.path.join(song_directory, f"{artist}-{title}.pdf")
-        filename_write = os.path.join("songs_modified", f"{artist}-{title}_modified.pdf")
-        add_text_to_pdf(filename_read, filename_write, f"{title} - {artist}")
+    # create table of contents
+
+    # write song data and pagenum on each page
+    add_text_to_pdf(output_filename, "real_output.pdf", song_data)    
+
 
 
 
