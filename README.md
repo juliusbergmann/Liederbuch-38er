@@ -1,6 +1,6 @@
 # Liederbuch 38er
 
-Copyright 2022 Julius Bergmann
+Copyright 2023 Julius Bergmann
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
